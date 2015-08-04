@@ -1,79 +1,35 @@
 #!/home/geekcookies/env/bin/python
 
-import requests
-import bs4
+import json
+import urllib
+import urllib2
+import pandas as pd
+import re
 import time
-import csv
 
-response = requests.get('https://archive.org/search.php?query=Geekcookiespodcast')
-soup = bs4.BeautifulSoup(response.text)
-actual_date = time.strftime("%Y-%m-%d %H:%M:%S")
-path = "/home/geekcookies/geekcookies.brapi.net/"
+### get the data as json
+opener = urllib2.build_opener()
+opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+resp = opener.open('https://archive.org/advancedsearch.php?q=creator%3A%22Geekcookiespodcast%22&fl%5B%5D=downloads&fl%5B%5D=publicdate&fl%5B%5D=title&sort%5B%5D=addeddate+asc&sort%5B%5D=&sort%5B%5D=&rows=50&page=1&indent=yes&output=json')
+data = resp.read()
+result = json.loads(data)
 
-# ## One element test
-#
-# Let's test one (the first) element in the HTML tree, extract the important data there.
-#cell = soup.findAll(attrs={"class" : "hitCell"})[0]
-#dic = {'date': actual_date,'filename' : str(cell.a.contents[0]),'comment' : str(cell.contents[4]),'downloads' : int(cell.contents[-1])}
-#for key,value in dic.iteritems():
-#   print key , type(value),value
+### make a dataframe
+gc_df = pd.DataFrame(result['response']['docs'])
 
-# ## All element
-#
-# Extract data from all elements in the HTML tree with list comprehension.
-def function_or_default(function, argument, default):
-    try:
-        result = function(argument)
-    except:
-        result = default
-    return result
+### collapse different fileversion
+gc_df.title = gc_df.title.apply(lambda x : re.match("^(geekcookies_ep_\d+).*$",x).group(1))
+grouped_df = gc_df.groupby('title').sum()
+grouped_df['datetime'] = time.strftime("%Y-%m-%d %H:%M:%S")
+grouped_df['title'] = grouped_df.index
+grouped_df = grouped_df.set_index('datetime').ix[:,('title','downloads')]
 
-search_results = soup.findAll(attrs={"class" : "item-ia"})
-output = []
-for r in search_results:
-    row = []
-    row.append(actual_date) # insert actual date
-    # this follow the new archive page format as on 03.2015
-    row.append(str(r.findChildren(attrs={"class" : "ttl C C2"})[0].a.text)) # get title
-    row.append(str(r.findChildren(attrs={"class" : "hidden-tiles views C C1"})[0].findChildren(attrs={"class" : "hidden-xs"})[0].text)) # get views
-    output.append(row)
+### append to general file
+grouped_df.fillna(value=0).to_csv('geekcookies.brapi.net/archive.org_geekcookiespodcast.csv', sep=',', encoding='utf-8',header=None,index=True, mode='a')
 
-with open(path+"archive.org_geekcookiespodcast.csv", "ab") as f:
-    writer = csv.writer(f,delimiter=',',quotechar='"', lineterminator="\n")
-    writer.writerows(output)
-f.close()
-# deserialize output for each entry
-
-#convert to dict
-cookies_dict = {}
-for datetime,name,downloads in output:
-    cookies_dict[name]=[datetime,downloads]
-for name,val in cookies_dict.iteritems():
-    if 'geekcookies_ep_0' in name:
-        if 'geekcookies_ep_0' == name:
-            output_row = [actual_date,str(int(cookies_dict[name][1])+int(cookies_dict[name+'_new'][1]))]
-        else:
-            continue
-    else:
-            output_row = val
-    print name,val,output_row
-    with open(path+name+".csv", "ab") as f:
-        writer = csv.writer(f,delimiter=',',quotechar='"',lineterminator="\n")
-        writer.writerows([ output_row ])
-    f.close()
-
-# using pandas
-#cookies_df = pd.DataFrame.from_records(output,columns=['datetime','filename','downloads'])
-#cookies_df.index =  pd.to_datetime(cookies_df.datetime)
-#cookies_df.drop('datetime', axis=1, inplace=True)
-
-#for stri in cookies_df.filename.unique():
-    #if 'geekcookies_ep_0' in stri:
-        #if 'geekcookies_ep_0' == stri:
-            #(cookies_df.ix[cookies_df.filename == stri+'_new','downloads']+ \
-            #cookies_df.ix[cookies_df.filename == stri,'downloads']).fillna(value=0).to_csv("/home/geekcookies/geekcookies.brapi.net/"+stri+".csv", sep=',', encoding='utf-8')
-    #else:
-        #cookies_df.ix[cookies_df.filename == stri,'downloads'].to_csv("/home/geekcookies/geekcookies.brapi.net/"+stri+".csv", sep=',', encoding='utf-8')
-
-
-
+### append to single files
+grouped_df.fillna(value=0).to_csv('geekcookies.brapi.net/archive.org_geekcookiespodcast.csv', sep=',', encoding='utf-8',header=None,index=True, mode='a')
+for row_index, row in grouped_df.iterrows():
+    row['datetime'] = row_index
+    print row.title+'.csv'
+    row.ix[['datetime','downloads']].fillna(value=0).to_frame().transpose().to_csv('geekcookies.brapi.net/'+row.title+'.csv', sep=',', encoding='utf-8',header=None,index=False, mode='a')
