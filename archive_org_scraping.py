@@ -1,7 +1,6 @@
 #!/home/geekcookies/env/bin/python
 
 import json
-import urllib
 import urllib2
 import pandas as pd
 import re
