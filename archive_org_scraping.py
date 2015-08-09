@@ -13,22 +13,27 @@ resp = opener.open('https://archive.org/advancedsearch.php?q=creator%3A%22Geekco
 data = resp.read()
 result = json.loads(data)
 
-### make a dataframe
-gc_df = pd.DataFrame(result['response']['docs'])
+# extract the results
+output = {}
+title_regex = '(geekcookies_ep_[0-9]+)(.+)$'
+for tmp in result['response']['docs']:
+    # take care of new version of episodes with an extra _string at the end
+    #if '_new' in tmp['title']:
+    if re.match(title_regex ,tmp['title']):
+        title = re.compile(title_regex).search(tmp['title']).group(1)
+        #title = '_'.join(tmp['title'].split('_')[:-1])
+    else:
+        title = tmp['title']
+    if title not in output:
+        output[title] = 0
+    output[title]=output[title]+tmp['downloads']
+    #print tmp['title'],tmp['downloads']
+    print title,output[title]
+    print '-'*40
 
-### collapse different fileversion
-gc_df.title = gc_df.title.apply(lambda x : re.match("^(geekcookies_ep_\d+).*$",x).group(1))
-grouped_df = gc_df.groupby('title').sum()
-grouped_df['datetime'] = time.strftime("%Y-%m-%d %H:%M:%S")
-grouped_df['title'] = grouped_df.index
-grouped_df = grouped_df.set_index('datetime').ix[:,('title','downloads')]
-
-### append to general file
-grouped_df.fillna(value=0).to_csv('geekcookies.brapi.net/archive.org_geekcookiespodcast.csv', sep=',', encoding='utf-8',header=None,index=True, mode='a')
-
-### append to single files
-grouped_df.fillna(value=0).to_csv('geekcookies.brapi.net/archive.org_geekcookiespodcast.csv', sep=',', encoding='utf-8',header=None,index=True, mode='a')
-for row_index, row in grouped_df.iterrows():
-    row['datetime'] = row_index
-    print row.title+'.csv'
-    row.ix[['datetime','downloads']].fillna(value=0).to_frame().transpose().to_csv('geekcookies.brapi.net/'+row.title+'.csv', sep=',', encoding='utf-8',header=None,index=False, mode='a')
+# cycle in the output dictionary
+for name,val in output.iteritems():
+    with open(path+name+".csv", "ab") as f:
+        writer = csv.writer(f,delimiter=',',quotechar='"',lineterminator="\n")
+        writer.writerows([ output_row ])
+    f.close()
