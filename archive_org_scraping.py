@@ -1,4 +1,4 @@
-#!/home/geekcookies/env/bin/python
+#!/usr/bin/python
 
 import json
 import urllib2
