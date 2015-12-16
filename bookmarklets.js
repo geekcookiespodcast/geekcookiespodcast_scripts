@@ -24,10 +24,10 @@ javascript:var t=encodeURI(document.title);var u=encodeURI(window.location);wind
 
 // Beatuful version
 javascript: var t = encodeURI(document.title);
-var u = '@l ' + encodeURI(window.location);
+var u = '@link ' + encodeURI(window.location);
 window.open('https://mail.google.com/mail/?view=cm&to=XXXYOUR EMAIL HEREXXX&fs=1&tf=1&su=' + t + '&body=' + u);
 
 // bookmarlet
-javascript:var t=encodeURI(document.title);var u='@l '+encodeURI(window.location);window.open('https://mail.google.com/mail/?view=cm&to=XXXYOUR EMAIL HEREXXX&fs=1&tf=1&su='+t+'&body='+u);
+javascript:var t=encodeURI(document.title);var u='@link '+encodeURI(window.location);window.open('https://mail.google.com/mail/?view=cm&to=XXXYOUR EMAIL HEREXXX&fs=1&tf=1&su='+t+'&body='+u);
 
 ////////////////////////////////////////////////////////////////////////////////////
